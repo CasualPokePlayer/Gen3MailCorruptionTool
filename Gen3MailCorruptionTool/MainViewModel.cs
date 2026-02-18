@@ -20,9 +20,12 @@ public partial class MainViewModel : ObservableObject
 	private ushort? _trainerId;
 
 	[ObservableProperty]
+	private sbyte? _timerMsOffset;
+
+	[ObservableProperty]
 	private string? _currentMessage;
 
-	private record SearchParameters(uint RngFrameMin, uint RngFrameMax, ushort TrainerId);
+	private record SearchParameters(uint RngFrameMin, uint RngFrameMax, ushort TrainerId, sbyte TimerMsOffset);
 
 	private SearchParameters CollectParameters()
 	{
@@ -41,7 +44,13 @@ public partial class MainViewModel : ObservableObject
 			throw new("Trainer ID is invalid");
 		}
 
-		return new(RngFrameMin.Value, RngFrameMax.Value, TrainerId.Value);
+		// ReSharper disable once ConvertIfStatementToReturnStatement
+		if (!TimerMsOffset.HasValue)
+		{
+			throw new("Timer MS Offset is invalid");
+		}
+
+		return new(RngFrameMin.Value, RngFrameMax.Value, TrainerId.Value, TimerMsOffset.Value);
 	}
 
 	private readonly struct SubstructureOrder
@@ -393,8 +402,29 @@ public partial class MainViewModel : ObservableObject
 				return $"{hpStat}/{atkStat}/{defStat}/{spAtkStat}/{spDefStat}/{spdStat}";
 			}
 
+			static uint CalcTimerMs(uint rngFrame, sbyte timerMsOffset, bool isDs)
+			{
+				// GBA is 59.7275 FPS (16777216/280896)
+				// DS is 59.6555 FPS (16756991/280896)
+				// reciprocal is seconds per frame
+				var timerMs = (uint)((rngFrame * 280896000UL + 280896000UL / 2UL) / (isDs ? 16756991UL : 16777216UL));
+				if (timerMsOffset >= 0)
+				{
+					return timerMs + (uint)timerMsOffset;
+				}
+
+				var timerMsDecrease = (uint)-timerMsOffset;
+				if (timerMs > timerMsDecrease)
+				{
+					return 0;
+				}
+
+				return timerMs - timerMsDecrease;
+			}
+
 			sortedComputedCorruptions.Add(new(
 				RngFrame: computedCorruption.RngFrame,
+				TimerMs: CalcTimerMs(computedCorruption.RngFrame, parameters.TimerMsOffset, IsDs),
 				EasyChatWordCorruption: EasyChat.EmeraldWords[computedCorruption.EasyChatWordCorruption],
 				EasyChatWordChecksumFixFirst: EasyChat.EmeraldWords[computedCorruption.EasyChatWordChecksumFixFirst],
 				EasyChatWordChecksumFixSecond: EasyChat.EmeraldWords[computedCorruption.EasyChatWordChecksumFixSecond],
@@ -408,10 +438,20 @@ public partial class MainViewModel : ObservableObject
 
 	private ConcurrentBag<EasyChatCorruptionState> _computedCorruptions = [];
 
-	public record ViewableEasyChatCorruptionState(uint RngFrame, string EasyChatWordCorruption, string EasyChatWordChecksumFixFirst, string? EasyChatWordChecksumFixSecond, string Nature, string Stats);
+	public record ViewableEasyChatCorruptionState(
+		uint RngFrame,
+		uint TimerMs,
+		string EasyChatWordCorruption,
+		string EasyChatWordChecksumFixFirst,
+		string EasyChatWordChecksumFixSecond,
+		string Nature,
+		string Stats);
 
 	[ObservableProperty]
 	private List<ViewableEasyChatCorruptionState> _sortedComputedCorruptions = [];
+
+	[ObservableProperty]
+	private bool _isDs;
 
 	public void Reset()
 	{
