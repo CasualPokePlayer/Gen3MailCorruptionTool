@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:vm="using:Gen3MailCorruptionTool"
+	x:Class="Gen3MailCorruptionTool.MainWindow"
+	Title="Gen 3 Mail Corruption Tool"
+	SizeToContent="WidthAndHeight">
+	<StackPanel Margin="20" x:DataType="vm:MainViewModel">
+		<Design.DataContext>
+			<vm:MainViewModel/>
+		</Design.DataContext>
+		<UniformGrid Margin="0 5">
+			<TextBlock Margin="0 5">RNG Frame Min</TextBlock>
+			<TextBlock Margin="0 5">RNG Frame Max</TextBlock>
+			<NumericUpDown FormatString="N0" ParsingNumberStyle="Number" Minimum="0" Maximum="9999" Value="{CompiledBinding Path = RngFrameMin, Mode = OneWayToSource}"/>
+			<NumericUpDown FormatString="N0" ParsingNumberStyle="Number" Minimum="0" Maximum="9999" Value="{CompiledBinding Path = RngFrameMax, Mode = OneWayToSource}"/>
+		</UniformGrid>
+		<TextBlock Margin="0 5">Trainer ID</TextBlock>
+		<NumericUpDown FormatString="N0" ParsingNumberStyle="Number" Minimum="0" Maximum="65535" Value="{CompiledBinding Path = TrainerId, Mode = OneWayToSource}"/>
+		<StackPanel Orientation="Horizontal">
+			<Button Margin="0, 5, 5, 5" Click="ComputeCorruptionsHandler">Compute Corruptions</Button>
+			<Button Margin="5, 5, 0, 5" Click="ResetHandler">Reset</Button>
+		</StackPanel>
+		<TextBox Margin="0 5" IsReadOnly="True" Text="{CompiledBinding Path = CurrentMessage, Mode = OneWay}"></TextBox>
+		<TextBlock Margin="0 5">Stats -> HP/Atk/Def/SpAtk/SpDef/Spd</TextBlock>
+		<DataGrid Margin="0 5" IsReadOnly="True" CanUserSortColumns="False" Height="280" ItemsSource="{CompiledBinding Path = SortedComputedCorruptions, Mode = OneWay}">
+			<DataGrid.Columns>
+				<DataGridTextColumn Header="RNG Frame" IsReadOnly="True" Binding="{CompiledBinding Path = RngFrame, Mode = OneWay}"/>
+				<DataGridTextColumn Header="Easy Chat 1st" IsReadOnly="True" MinWidth="140" Binding="{CompiledBinding Path = EasyChatWordChecksumFixFirst, Mode = OneWay}"/>
+				<DataGridTextColumn Header="Easy Chat 5th" IsReadOnly="True" MinWidth="140" Binding="{CompiledBinding Path = EasyChatWordCorruption, Mode = OneWay}"/>
+				<DataGridTextColumn Header="Easy Chat 7th" IsReadOnly="True" MinWidth="140" Binding="{CompiledBinding Path = EasyChatWordChecksumFixSecond, Mode = OneWay}"/>
+				<DataGridTextColumn Header="Nature" IsReadOnly="True" MinWidth="185" Binding="{CompiledBinding Path = Nature, Mode = OneWay}"/>
+				<DataGridTextColumn Header="Stats" IsReadOnly="True" MinWidth="185" Binding="{CompiledBinding Path = Stats, Mode = OneWay}"/>
+			</DataGrid.Columns>
+		</DataGrid>
+	</StackPanel>
+</Window>

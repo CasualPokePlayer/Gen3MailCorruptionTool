@@ -1,0 +1,44 @@
+using System.Collections.Immutable;
+
+namespace Gen3MailCorruptionTool;
+
+public static class GrabMons
+{
+	// These are just the ARM targets (not much point in trying to expand the search to thumb)
+	public static readonly ImmutableArray<ushort> EmeraldSpecies =
+	[
+		0x05B6,
+		0x3694,
+		0x3F23,
+		0x47A0,
+		0x7BFB,
+		0x8052,
+		0x8AEA,
+		0xACFF,
+		0xAE69,
+		0xAF01,
+		0xAF0B,
+		0xBB0A,
+		0xBE80,
+		0xC15C,
+		0xC372,
+		//0xC38F,
+		0xC39A,
+		0xC39C,
+		0xC3F0,
+		0xC3FC,
+		0xC43F,
+		0xC9F9,
+		0xD0AD,
+		0xD4D8,
+		0xD4E8,
+		0xD518,
+		0xD7C7,
+		0xD90B,
+		0xD91B,
+		0xD93B,
+		0xD98B,
+		//0xDB17,
+		0xE441,
+	];
+}

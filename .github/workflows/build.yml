@@ -1,0 +1,52 @@
+name: Build Gen3MailCorruptionTool
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+        - name: windows-x64
+          runner: windows-latest
+          shell: cmd
+          rid: win-x64
+          msvc_arch: x64
+        - name: windows-arm64
+          runner: windows-latest
+          shell: cmd
+          rid: win-arm64
+          msvc_arch: x64_arm64
+    name: ${{ matrix.platform.name }}
+    runs-on: ${{ matrix.platform.runner }}
+    container: ${{ matrix.platform.container }}
+    defaults:
+      run:
+        shell: ${{ matrix.platform.shell }}
+    steps:
+    - name: Setup MSVC environment
+      if: matrix.platform.msvc_arch != ''
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ${{ matrix.platform.msvc_arch }}
+    - name: Checkout source code
+      uses: actions/checkout@v4
+      with:
+        path: Gen3MailCorruptionTool
+        fetch-depth: 1
+    - name: Run CI build script
+      run: |
+        cd Gen3MailCorruptionTool
+        dotnet publish -r ${{ matrix.platform.rid }}
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Gen3MailCorruptionTool-${{ matrix.platform.rid }}
+        path: Gen3MailCorruptionTool/output/${{ matrix.platform.rid }}/publish/*
+        if-no-files-found: error
