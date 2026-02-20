@@ -13,7 +13,7 @@
 		<IsAotCompatible>true</IsAotCompatible>
 		<PublishAot>true</PublishAot>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-		<OutputPath>$(ProjectDir)../output</OutputPath>
+		<OutputPath>$(ProjectDir)output</OutputPath>
 		<OutputType>WinExe</OutputType>
 	</PropertyGroup>
 	<PropertyGroup>
