@@ -20,12 +20,15 @@ public partial class MainViewModel : ObservableObject
 	private ushort? _trainerId;
 
 	[ObservableProperty]
-	private sbyte? _timerMsOffset;
+	private short? _timerMsOffset;
+
+	[ObservableProperty]
+	private bool _softReset;
 
 	[ObservableProperty]
 	private string? _currentMessage;
 
-	private record SearchParameters(uint RngFrameMin, uint RngFrameMax, ushort TrainerId, sbyte TimerMsOffset);
+	private record SearchParameters(uint RngFrameMin, uint RngFrameMax, ushort TrainerId, short TimerMsOffset, bool SoftReset);
 
 	private SearchParameters CollectParameters()
 	{
@@ -50,7 +53,7 @@ public partial class MainViewModel : ObservableObject
 			throw new("Timer MS Offset is invalid");
 		}
 
-		return new(RngFrameMin.Value, RngFrameMax.Value, TrainerId.Value, TimerMsOffset.Value);
+		return new(RngFrameMin.Value, RngFrameMax.Value, TrainerId.Value, TimerMsOffset.Value, SoftReset);
 	}
 
 	private readonly struct SubstructureOrder
@@ -155,7 +158,9 @@ public partial class MainViewModel : ObservableObject
 	{
 		var param = (ComputeCorruptionThreadParam)threadParam!;
 
-		var seed = 0u;
+		// If a soft reset is being used, then the initial seed is 0
+		// Otherwise, the initial seed is the trainer ID
+		var seed = param.SearchParameters.SoftReset ? 0u : param.SearchParameters.TrainerId;
 		for (var rngFrame = 0u; rngFrame < param.RngFrameStart; rngFrame++)
 		{
 			AdvanceRng(ref seed);
@@ -184,6 +189,7 @@ public partial class MainViewModel : ObservableObject
 			// easy chat words written are written directly, i.e. "encrypted"
 			// so pre-decrypt all the words we'll be using (it makes math easier)
 			var easyChatWordsDecrypted = new List<ushort>();
+			// ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
 			foreach (var easyChatWordIndex in EasyChat.EmeraldWords.Keys)
 			{
 				easyChatWordsDecrypted.Add((ushort)(easyChatWordIndex ^ lowerEncryptionKey));
@@ -297,7 +303,7 @@ public partial class MainViewModel : ObservableObject
 			return;
 		}
 
-		_computedCorruptions = [];
+		var computedCorruptions = new ConcurrentBag<EasyChatCorruptionState>();
 		var maxParallelism = Environment.ProcessorCount * 3 / 4;
 		var threads = new Thread[maxParallelism];
 		var rngFramesPerFrame = (parameters.RngFrameMax - parameters.RngFrameMin + 1) / (uint)maxParallelism;
@@ -310,7 +316,7 @@ public partial class MainViewModel : ObservableObject
 					SearchParameters: parameters,
 					RngFrameStart: parameters.RngFrameMin + (uint)(i * rngFramesPerFrame),
 					RngFrameEnd: parameters.RngFrameMin + (uint)((i + 1) * rngFramesPerFrame - 1),
-					ComputedCorruptions: _computedCorruptions);
+					ComputedCorruptions: computedCorruptions);
 				threads[i].Start(threadParam);
 			}
 		}
@@ -321,7 +327,7 @@ public partial class MainViewModel : ObservableObject
 				SearchParameters: parameters,
 				RngFrameStart: parameters.RngFrameMin + (uint)maxParallelism * rngFramesPerFrame,
 				RngFrameEnd: parameters.RngFrameMax,
-				ComputedCorruptions: _computedCorruptions);
+				ComputedCorruptions: computedCorruptions);
 			ComputeEmeraldCorruptionThreadProc(threadParam);
 		}
 
@@ -333,18 +339,18 @@ public partial class MainViewModel : ObservableObject
 			}
 		}
 
-		if (_computedCorruptions.IsEmpty)
+		if (computedCorruptions.IsEmpty)
 		{
 			CurrentMessage = "No corruptions could be computed (add more RNG frames)";
 			return;
 		}
 
 		// sort computed corruptions into an observable property
-		var computedCorruptions = _computedCorruptions.ToArray();
-		Array.Sort(computedCorruptions, (x, y) => x.RngFrame.CompareTo(y.RngFrame));
+		var sortedComputedCorruptions = computedCorruptions.ToArray();
+		Array.Sort(sortedComputedCorruptions, (x, y) => x.RngFrame.CompareTo(y.RngFrame));
 
-		var sortedComputedCorruptions = new List<ViewableEasyChatCorruptionState>();
-		foreach (var computedCorruption in computedCorruptions)
+		var viewableComputedCorruptions = new List<ViewableEasyChatCorruptionState>();
+		foreach (var sortedComputedCorruption in sortedComputedCorruptions)
 		{
 			static string GetNature(uint pid)
 			{
@@ -402,7 +408,7 @@ public partial class MainViewModel : ObservableObject
 				return $"{hpStat}/{atkStat}/{defStat}/{spAtkStat}/{spDefStat}/{spdStat}";
 			}
 
-			static uint CalcTimerMs(uint rngFrame, sbyte timerMsOffset, bool isDs)
+			static uint CalcTimerMs(uint rngFrame, short timerMsOffset, bool isDs)
 			{
 				// GBA is 59.7275 FPS (16777216/280896)
 				// DS is 59.6555 FPS (16756991/280896)
@@ -422,21 +428,19 @@ public partial class MainViewModel : ObservableObject
 				return timerMs - timerMsDecrease;
 			}
 
-			sortedComputedCorruptions.Add(new(
-				RngFrame: computedCorruption.RngFrame,
-				TimerMs: CalcTimerMs(computedCorruption.RngFrame, parameters.TimerMsOffset, IsDs),
-				EasyChatWordCorruption: EasyChat.EmeraldWords[computedCorruption.EasyChatWordCorruption],
-				EasyChatWordChecksumFixFirst: EasyChat.EmeraldWords[computedCorruption.EasyChatWordChecksumFixFirst],
-				EasyChatWordChecksumFixSecond: EasyChat.EmeraldWords[computedCorruption.EasyChatWordChecksumFixSecond],
-				Nature: GetNature(computedCorruption.Pid),
-				Stats: GetStats(computedCorruption.Ivs, computedCorruption.Pid)));
+			viewableComputedCorruptions.Add(new(
+				RngFrame: sortedComputedCorruption.RngFrame,
+				TimerMs: CalcTimerMs(sortedComputedCorruption.RngFrame, parameters.TimerMsOffset, IsDs),
+				EasyChatWordCorruption: EasyChat.EmeraldWords[sortedComputedCorruption.EasyChatWordCorruption],
+				EasyChatWordChecksumFixFirst: EasyChat.EmeraldWords[sortedComputedCorruption.EasyChatWordChecksumFixFirst],
+				EasyChatWordChecksumFixSecond: EasyChat.EmeraldWords[sortedComputedCorruption.EasyChatWordChecksumFixSecond],
+				Nature: GetNature(sortedComputedCorruption.Pid),
+				Stats: GetStats(sortedComputedCorruption.Ivs, sortedComputedCorruption.Pid)));
 		}
 
-		SortedComputedCorruptions = sortedComputedCorruptions;
-		CurrentMessage = $"Computed {sortedComputedCorruptions.Count} corruptions";
+		ViewableComputedCorruptions = viewableComputedCorruptions;
+		CurrentMessage = $"Computed {viewableComputedCorruptions.Count} corruptions";
 	}
-
-	private ConcurrentBag<EasyChatCorruptionState> _computedCorruptions = [];
 
 	public record ViewableEasyChatCorruptionState(
 		uint RngFrame,
@@ -448,15 +452,14 @@ public partial class MainViewModel : ObservableObject
 		string Stats);
 
 	[ObservableProperty]
-	private List<ViewableEasyChatCorruptionState> _sortedComputedCorruptions = [];
+	private List<ViewableEasyChatCorruptionState> _viewableComputedCorruptions = [];
 
 	[ObservableProperty]
 	private bool _isDs;
 
 	public void Reset()
 	{
-		_computedCorruptions = [];
-		SortedComputedCorruptions = [];
+		ViewableComputedCorruptions = [];
 		GC.Collect();
 		CurrentMessage = "Corruption computations reset";
 	}

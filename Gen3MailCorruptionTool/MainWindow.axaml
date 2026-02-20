@@ -11,23 +11,26 @@
 		<UniformGrid Margin="0 5">
 			<TextBlock Margin="0 5">RNG Frame Min</TextBlock>
 			<TextBlock Margin="0 5">RNG Frame Max</TextBlock>
-			<NumericUpDown FormatString="N0" ParsingNumberStyle="Number" Minimum="0" Maximum="9999" Value="{CompiledBinding Path = RngFrameMin, Mode = OneWayToSource}"/>
-			<NumericUpDown FormatString="N0" ParsingNumberStyle="Number" Minimum="0" Maximum="9999" Value="{CompiledBinding Path = RngFrameMax, Mode = OneWayToSource}"/>
+			<NumericUpDown FormatString="N0" ParsingNumberStyle="Number" Minimum="0" Maximum="99999" Value="{CompiledBinding Path = RngFrameMin, Mode = OneWayToSource}"/>
+			<NumericUpDown FormatString="N0" ParsingNumberStyle="Number" Minimum="0" Maximum="99999" Value="{CompiledBinding Path = RngFrameMax, Mode = OneWayToSource}"/>
 		</UniformGrid>
 		<UniformGrid Margin="0 5">
 			<TextBlock Margin="0 5">Trainer ID</TextBlock>
 			<TextBlock Margin="0 5">Timer MS Offset</TextBlock>
 			<NumericUpDown FormatString="N0" ParsingNumberStyle="Number" Minimum="0" Maximum="65535" Value="{CompiledBinding Path = TrainerId, Mode = OneWayToSource}"/>
-			<NumericUpDown FormatString="N0" ParsingNumberStyle="Number" Minimum="-128" Maximum="127" Value="{CompiledBinding Path = TimerMsOffset, Mode = OneWayToSource}"/>
+			<NumericUpDown FormatString="N0" ParsingNumberStyle="Number" Minimum="-32768" Maximum="32767" Value="{CompiledBinding Path = TimerMsOffset, Mode = OneWayToSource}"/>
 		</UniformGrid>
-		<CheckBox Margin="0 5" IsChecked="{CompiledBinding Path = IsDs, Mode = OneWayToSource}">DS Timings</CheckBox>
+		<StackPanel Orientation="Horizontal">
+			<CheckBox Margin="0, 5, 5, 5" IsChecked="{CompiledBinding Path = IsDs, Mode = OneWayToSource}">DS Timings</CheckBox>
+			<CheckBox Margin="5, 5, 0, 5" IsChecked="{CompiledBinding Path = SoftReset, Mode = OneWayToSource}">Soft Reset Manip</CheckBox>
+		</StackPanel>
 		<StackPanel Orientation="Horizontal">
 			<Button Margin="0, 5, 5, 5" Click="ComputeCorruptionsHandler">Compute Corruptions</Button>
 			<Button Margin="5, 5, 0, 5" Click="ResetHandler">Reset</Button>
 		</StackPanel>
 		<TextBox Margin="0 5" IsReadOnly="True" Text="{CompiledBinding Path = CurrentMessage, Mode = OneWay}"></TextBox>
 		<TextBlock Margin="0 5">Stats -> HP/Atk/Def/SpAtk/SpDef/Spd</TextBlock>
-		<DataGrid Margin="0 5" IsReadOnly="True" CanUserSortColumns="False" Height="280" ItemsSource="{CompiledBinding Path = SortedComputedCorruptions, Mode = OneWay}">
+		<DataGrid Margin="0 5" IsReadOnly="True" CanUserSortColumns="False" Height="280" ItemsSource="{CompiledBinding Path = ViewableComputedCorruptions, Mode = OneWay}">
 			<DataGrid.Columns>
 				<DataGridTextColumn Header="RNG Frame" IsReadOnly="True" Binding="{CompiledBinding Path = RngFrame, Mode = OneWay}"/>
 				<DataGridTextColumn Header="Timer MS" IsReadOnly="True" Binding="{CompiledBinding Path = TimerMs, Mode = OneWay}"/>
